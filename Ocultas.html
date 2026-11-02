@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cajas Filosóficas</title>
+<style>
+  :root{
+    --bg:#0b0b0f; --fg:#e9e6df; --muted:#8a8794;
+    --pecado:#c0392b; --virtud:#d4af37; --emocion:#3b82c4; --mal:#7d3cc2;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:radial-gradient(1200px 700px at 50% -10%,#1a1a24 0%,var(--bg) 60%) fixed;
+    color:var(--fg);font-family:Georgia,"Times New Roman",serif;min-height:100vh;padding:32px 16px 64px;
+  }
+  header{text-align:center;max-width:760px;margin:0 auto 28px}
+  h1{font-size:clamp(28px,5vw,48px);letter-spacing:.08em;font-weight:400;text-transform:uppercase}
+  header p{color:var(--muted);margin-top:10px;font-style:italic}
+  .controls{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:22px auto 30px;max-width:900px}
+  .controls button{
+    background:transparent;color:var(--fg);border:1px solid #33323c;padding:8px 16px;border-radius:999px;
+    font-family:inherit;font-size:14px;cursor:pointer;transition:.2s;
+  }
+  .controls button:hover{border-color:var(--fg)}
+  .controls button.active{background:var(--fg);color:var(--bg)}
+  .grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px;max-width:1300px;margin:0 auto;
+  }
+  .card{
+    perspective:1000px;height:290px;background:none;border:none;cursor:pointer;text-align:inherit;color:inherit;font:inherit;
+  }
+  .card:focus-visible{outline:2px solid var(--fg);outline-offset:4px;border-radius:14px}
+  .inner{
+    position:relative;width:100%;height:100%;transition:transform .7s cubic-bezier(.2,.8,.2,1);transform-style:preserve-3d;
+  }
+  .card.flipped .inner{transform:rotateY(180deg)}
+  .face{
+    position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:14px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px;
+    border:1px solid color-mix(in srgb,var(--c) 55%,#000);
+  }
+  .front{
+    border-color:#3a3945;
+    background:
+      repeating-linear-gradient(45deg,transparent 0 10px,rgba(255,255,255,.025) 10px 11px),
+      linear-gradient(160deg,#17171e,#0e0e13 70%);
+    box-shadow:inset 0 0 40px rgba(255,255,255,.04);
+  }
+  .front .emblem{
+    width:78px;height:78px;border:1px solid #55536a;transform:rotate(45deg);display:flex;align-items:center;justify-content:center;
+    margin-bottom:6px;
+  }
+  .front .emblem span{transform:rotate(-45deg);font-size:34px;color:#8f8ca6}
+  .front .hint{position:absolute;bottom:14px;font-size:11px;color:var(--muted);font-style:italic}
+  .back .sym{font-size:34px;filter:drop-shadow(0 0 10px var(--c))}
+  .back .cat{font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+  .back{
+    transform:rotateY(180deg);background:#0a0a0d;
+    background-image:radial-gradient(circle at 50% 0,color-mix(in srgb,var(--c) 25%,transparent),transparent 65%);
+    justify-content:space-between;text-align:center;
+  }
+  .back .tag{font-size:12px;letter-spacing:.25em;text-transform:uppercase;color:var(--c)}
+  .back blockquote{font-size:16.5px;line-height:1.5;font-style:italic;overflow:auto;max-height:190px;padding:0 2px}
+  .back .rule{width:40px;height:1px;background:var(--c)}
+  .hidden{display:none}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:40px;font-style:italic}
+</style>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#0b0b0f">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cajas">
+</head>
+<body>
+<header>
+  <h1>Cajas Filosóficas</h1>
+  <p>Cada caja guarda una verdad incómoda. Ábrelas bajo tu propio riesgo.</p>
+</header>
+
+<div class="controls" id="controls"></div>
+<main class="grid" id="grid"></main>
+<footer>«Quien no soporta mirarse en estas cajas, ya sabe cuál es la suya.»</footer>
+
+<script>
+const CATS = {
+  pecado:{label:"Pecados capitales",color:"#c0392b"},
+  virtud:{label:"Virtudes",color:"#d4af37"},
+  emocion:{label:"Emociones",color:"#3b82c4"},
+  mal:{label:"Males",color:"#7d3cc2"}
+};
+
+const DATA = [
+  // PECADOS
+  ["Soberbia","👑","pecado","Si me dices que hay alguien más grande, aun si es dios, estás mintiendo, si ese alguien más grande no soy yo."],
+  ["Avaricia","💰","pecado","Lo que tengo no me basta, lo que tienes tú me ofende. Cuando todo sea mío, buscaré qué más falta."],
+  ["Lujuria","🔥","pecado","No te amo: te consumo. Y tú, si fueras honesto, harías lo mismo conmigo."],
+  ["Ira","⚔️","pecado","Que arda todo. Prefiero reinar sobre cenizas que obedecer en un jardín."],
+  ["Gula","🍷","pecado","Devoro porque dentro hay un hueco, y ningún banquete ha sabido llenar lo que nunca fue hambre."],
+  ["Envidia","🐍","pecado","No quiero lo tuyo. Quiero que tú no lo tengas. Esa es la única justicia que me consuela."],
+  ["Pereza","🕸️","pecado","Un día dejé de vivir y nadie lo notó. Ni siquiera yo."],
+
+  // VIRTUDES
+  ["Humildad","🪨","virtud","Conocerme pequeño no me humilla: me libera de defender un trono que nunca fue mío."],
+  ["Generosidad","🩸","virtud","Dar lo que sobra no es caridad, es limpiar la conciencia. Dar es sangrar un poco."],
+  ["Templanza","⚖️","virtud","El que domina a un ejército es fuerte. El que se domina a sí mismo, es peligroso."],
+  ["Paciencia","⏳","virtud","El tiempo no perdona a nadie, pero se arrodilla ante quien sabe esperar."],
+  ["Diligencia","🔨","virtud","Nadie te debe un destino. Se forja a golpes, y el yunque eres tú."],
+  ["Justicia","🗡️","virtud","Una justicia que no se atreve a doler no es justicia: es cortesía."],
+  ["Valor","🦁","virtud","El miedo no se vence: se carga. El valiente solo es el que camina con él a cuestas."],
+
+  // EMOCIONES
+  ["Miedo","🌑","emocion","Todo lo que temes ya te gobierna. La jaula es tu imaginación; la llave, también."],
+  ["Tristeza","🌧️","emocion","El dolor no pide permiso ni explicaciones. Solo exige que seas lo bastante honesto para sentirlo."],
+  ["Alegría","☀️","emocion","Reír con el abismo de frente es el acto de rebeldía más elegante que existe."],
+  ["Asco","🤢","emocion","Hay verdades que no se entienden: se vomitan. Después, ya nada vuelve a saber igual."],
+  ["Soledad","🕯️","emocion","Estar solo no es el problema. El problema es descubrir que contigo mismo tampoco hay nadie."],
+  ["Vergüenza","🎭","emocion","Llevas una máscara tan bien puesta que ya te avergüenza lo que hay debajo."],
+  ["Culpa","⛓️","emocion","Ningún tribunal es tan cruel como el que llevas dentro, y ninguno acepta apelaciones."],
+  ["Celos","👁️","emocion","Quien vigila lo que ama, ya lo ha perdido; solo le falta enterarse."],
+  ["Nostalgia","🕰️","emocion","Extrañas un pasado que nunca fue tan bello. Lo embelleciste para poder soportar el presente."],
+  ["Esperanza","🕊️","emocion","La esperanza es la crueldad final de los dioses: mantiene vivo al condenado para que sufra más."],
+  ["Odio","🌋","emocion","Odiar es beber veneno esperando que muera otro. Y aun así, qué sed."],
+  ["Ansiedad","🌀","emocion","Sufres mil veces por una desgracia que solo ocurrirá una. O ninguna."],
+
+  // MALES
+  ["Crueldad","🔪","mal","El que se ríe del dolor ajeno confiesa, sin querer, cuánto le pesa el suyo."],
+  ["Traición","🪙","mal","Solo puede traicionarte quien tuvo tu espalda. Por eso duele más que cualquier enemigo."],
+  ["Hipocresía","🎪","mal","Predica la virtud en voz alta para que nadie escuche cómo grita su conciencia."],
+  ["Indiferencia","🧊","mal","El mal no necesita héroes malvados: le basta con millones que miran hacia otro lado."],
+  ["Mentira","🪞","mal","Mentirás tantas veces que un día no sabrás cuál de tus rostros es el verdadero."],
+  ["Venganza","🩻","mal","Cavas dos tumbas: la de tu enemigo y la tuya. Solo una tiene lápida."],
+  ["Cobardía","🐀","mal","El cobarde muere mil veces; lo trágico es que ninguna de ellas lo salva."],
+  ["Egoísmo","🏝️","mal","Tu isla es perfecta. Lástima que solo quepa alguien que no merece estar en ella."],
+  ["Fanatismo","⛧","mal","Quien nunca duda ya no piensa: obedece, y llama fe a su obediencia."],
+  ["Ingratitud","🥀","mal","Muerde la mano que lo alimentó y se queja del sabor."]
+];
+
+const grid = document.getElementById("grid");
+const controls = document.getElementById("controls");
+let filter = "todos";
+
+function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+
+function render(list){
+  grid.innerHTML = "";
+  list.forEach(([name,sym,cat,quote])=>{
+    const c = CATS[cat];
+    const el = document.createElement("button");
+    el.className = "card";
+    el.style.setProperty("--c", c.color);
+    el.setAttribute("aria-label", "Caja cerrada: pulsa para voltear");
+    el.dataset.cat = cat;
+    el.innerHTML = `
+      <div class="inner">
+        <div class="face front">
+          <div class="emblem"><span>?</span></div>
+          <div class="hint">toca para voltear</div>
+        </div>
+        <div class="face back">
+          <div>
+            <div class="sym">${sym}</div>
+            <div class="tag">${esc(name)}</div>
+            <div class="cat">${c.label}</div>
+          </div>
+          <blockquote>«${esc(quote)}»</blockquote>
+          <div class="rule"></div>
+        </div>
+      </div>`;
+    el.addEventListener("click",()=>el.classList.toggle("flipped"));
+    grid.appendChild(el);
+  });
+  applyFilter();
+}
+
+function applyFilter(){
+  grid.querySelectorAll(".card").forEach(c=>{
+    c.classList.toggle("hidden", filter!=="todos" && c.dataset.cat!==filter);
+  });
+}
+
+function addBtn(label, onClick, key){
+  const b = document.createElement("button");
+  b.textContent = label;
+  if(key) b.dataset.key = key;
+  b.addEventListener("click",()=>onClick(b));
+  controls.appendChild(b);
+  return b;
+}
+
+function setActive(key){
+  controls.querySelectorAll("button[data-key]").forEach(b=>b.classList.toggle("active", b.dataset.key===key));
+}
+
+function shuffled(){
+  const l=[...DATA];
+  for(let i=l.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[l[i],l[j]]=[l[j],l[i]]}
+  return l;
+}
+addBtn("🎲 Barajar y cerrar todas",()=>render(shuffled()));
+addBtn("↺ Voltear todas",()=>{
+  const cards=[...grid.querySelectorAll(".card:not(.hidden)")];
+  const anyClosed=cards.some(c=>!c.classList.contains("flipped"));
+  cards.forEach(c=>c.classList.toggle("flipped",anyClosed));
+});
+
+render(shuffled());
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>

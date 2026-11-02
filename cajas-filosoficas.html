@@ -41,13 +41,20 @@
     border:1px solid color-mix(in srgb,var(--c) 55%,#000);
   }
   .front{
-    background:linear-gradient(160deg,color-mix(in srgb,var(--c) 22%,#101015),#0e0e13 70%);
-    box-shadow:inset 0 0 40px color-mix(in srgb,var(--c) 14%,transparent);
+    border-color:#3a3945;
+    background:
+      repeating-linear-gradient(45deg,transparent 0 10px,rgba(255,255,255,.025) 10px 11px),
+      linear-gradient(160deg,#17171e,#0e0e13 70%);
+    box-shadow:inset 0 0 40px rgba(255,255,255,.04);
   }
-  .front .sym{font-size:54px;margin-bottom:14px;filter:drop-shadow(0 0 12px var(--c))}
-  .front .name{font-size:24px;letter-spacing:.12em;text-transform:uppercase}
-  .front .cat{margin-top:10px;font-size:12px;letter-spacing:.25em;text-transform:uppercase;color:var(--c)}
+  .front .emblem{
+    width:78px;height:78px;border:1px solid #55536a;transform:rotate(45deg);display:flex;align-items:center;justify-content:center;
+    margin-bottom:6px;
+  }
+  .front .emblem span{transform:rotate(-45deg);font-size:34px;color:#8f8ca6}
   .front .hint{position:absolute;bottom:14px;font-size:11px;color:var(--muted);font-style:italic}
+  .back .sym{font-size:34px;filter:drop-shadow(0 0 10px var(--c))}
+  .back .cat{font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);margin-top:4px}
   .back{
     transform:rotateY(180deg);background:#0a0a0d;
     background-image:radial-gradient(circle at 50% 0,color-mix(in srgb,var(--c) 25%,transparent),transparent 65%);
@@ -59,6 +66,13 @@
   .hidden{display:none}
   footer{text-align:center;color:var(--muted);font-size:13px;margin-top:40px;font-style:italic}
 </style>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#0b0b0f">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cajas">
 </head>
 <body>
 <header>
@@ -137,18 +151,20 @@ function render(list){
     const el = document.createElement("button");
     el.className = "card";
     el.style.setProperty("--c", c.color);
-    el.setAttribute("aria-label", name + ": pulsa para voltear");
+    el.setAttribute("aria-label", "Caja cerrada: pulsa para voltear");
     el.dataset.cat = cat;
     el.innerHTML = `
       <div class="inner">
         <div class="face front">
-          <div class="sym">${sym}</div>
-          <div class="name">${esc(name)}</div>
-          <div class="cat">${c.label}</div>
+          <div class="emblem"><span>?</span></div>
           <div class="hint">toca para voltear</div>
         </div>
         <div class="face back">
-          <div class="tag">${esc(name)}</div>
+          <div>
+            <div class="sym">${sym}</div>
+            <div class="tag">${esc(name)}</div>
+            <div class="cat">${c.label}</div>
+          </div>
           <blockquote>«${esc(quote)}»</blockquote>
           <div class="rule"></div>
         </div>
@@ -178,23 +194,24 @@ function setActive(key){
   controls.querySelectorAll("button[data-key]").forEach(b=>b.classList.toggle("active", b.dataset.key===key));
 }
 
-addBtn("Todos",()=>{filter="todos";applyFilter();setActive("todos")},"todos");
-Object.entries(CATS).forEach(([k,v])=>{
-  addBtn(v.label,()=>{filter=k;applyFilter();setActive(k)},k);
-});
-addBtn("🎲 Barajar",()=>{
+function shuffled(){
   const l=[...DATA];
   for(let i=l.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[l[i],l[j]]=[l[j],l[i]]}
-  render(l);
-});
+  return l;
+}
+addBtn("🎲 Barajar y cerrar todas",()=>render(shuffled()));
 addBtn("↺ Voltear todas",()=>{
   const cards=[...grid.querySelectorAll(".card:not(.hidden)")];
   const anyClosed=cards.some(c=>!c.classList.contains("flipped"));
   cards.forEach(c=>c.classList.toggle("flipped",anyClosed));
 });
 
-setActive("todos");
-render(DATA);
+render(shuffled());
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
 </script>
 </body>
 </html>
